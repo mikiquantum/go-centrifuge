@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package entity;
+
+option go_package = "entitypb";
+option java_multiple_files = true;
+option java_outer_classname = "ServiceProto";
+option java_package = "com.entity";
+
+import "document/service.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+
+message AddressData {
+  bool main = 1;
+  //custom fields
+  string address1 = 3;
+  string address2 = 4;
+  string country = 5;
+  string zip_code = 6;
+}
+
+message PaymentMethodData {
+  bool predetermined = 1;
+  //custom fields
+  AddressData address = 3;
+  string holder_name = 4;
+  string bank_key = 5;
+  string bank_account_number = 6;
+  string currency = 7;
+  string ethereum_address = 8;
+}
+
+message Contact {
+  string name = 1;
+  string email = 2;
+  string phone = 3;
+  string title = 4;
+}
+
+message EntityData {
+  string identity = 1;
+  //custom fields
+  repeated AddressData addresses = 3;
+  repeated PaymentMethodData payment_methods = 4;
+  repeated Contact contacts = 5;
+  google.protobuf.Timestamp date_created = 6;
+}

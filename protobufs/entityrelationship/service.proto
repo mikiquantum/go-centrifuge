@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package entityrelationship;
+
+option go_package = "entityrelationshippb";
+option java_multiple_files = true;
+option java_outer_classname = "ServiceProto";
+option java_package = "com.entityrelationship";
+
+import "document/service.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+import "protoc-gen-swagger/options/annotations.proto";
+
+message EntityRelationshipData {
+  string entity_id = 1;
+  //custom fields
+  string identity = 3;
+  int64 expiration_block_height = 4;
+  google.protobuf.Timestamp date_created = 6;
+}
