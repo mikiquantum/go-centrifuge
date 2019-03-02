@@ -23,6 +23,7 @@ import (
 	"github.com/libp2p/go-libp2p-host"
 	"github.com/libp2p/go-libp2p-kad-dht"
 	libp2pPeer "github.com/libp2p/go-libp2p-peer"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/libp2p/go-libp2p-protocol"
 	ma "github.com/multiformats/go-multiaddr"
@@ -142,6 +143,8 @@ func (s *peer) createSigningKey(pubKey, privKey string) (priv crypto.PrivKey, pu
 
 // makeBasicHost creates a LibP2P host with a peer ID listening on the given port
 func makeBasicHost(priv crypto.PrivKey, pub crypto.PubKey, externalIP string, listenPort int) (host.Host, error) {
+
+	libp2pPeer.AdvancedEnableInlining = false
 	// Obtain Peer ID from public key
 	// We should be using the following method to get the ID, but looks like is not compatible with
 	// secio when adding the pub and pvt keys, fail as id+pub/pvt key is checked to match and method defaults to
@@ -153,7 +156,10 @@ func makeBasicHost(priv crypto.PrivKey, pub crypto.PubKey, externalIP string, li
 	}
 
 	// Create a peerstore
-	ps := pstore.NewPeerstore()
+	ps := pstore.NewPeerstore(
+		pstoremem.NewKeyBook(),
+		pstoremem.NewAddrBook(),
+		pstoremem.NewPeerMetadata())
 
 	// Add the keys to the peerstore
 	// for this peer ID.
