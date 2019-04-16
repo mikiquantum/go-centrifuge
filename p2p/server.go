@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/centrifuge/go-centrifuge/config"
 	crypto2 "github.com/centrifuge/go-centrifuge/crypto"
@@ -14,7 +13,6 @@ import (
 	ms "github.com/centrifuge/go-centrifuge/p2p/messenger"
 	"github.com/centrifuge/go-centrifuge/p2p/receiver"
 	pb "github.com/centrifuge/go-centrifuge/protobufs/gen/go/protocol"
-	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ipfsaddr "github.com/ipfs/go-ipfs-addr"
 	logging "github.com/ipfs/go-log"
@@ -24,10 +22,9 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	libp2pPeer "github.com/libp2p/go-libp2p-peer"
 	pstore "github.com/libp2p/go-libp2p-peerstore"
-	pstoremem "github.com/libp2p/go-libp2p-peerstore/pstoremem"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	protocol "github.com/libp2p/go-libp2p-protocol"
 	ma "github.com/multiformats/go-multiaddr"
-	mh "github.com/multiformats/go-multihash"
 )
 
 var log = logging.Logger("p2p-server")
@@ -197,54 +194,66 @@ func makeBasicHost(priv crypto.PrivKey, pub crypto.PubKey, externalIP string, li
 
 func runDHT(ctx context.Context, h host.Host, bootstrapPeers []string) error {
 	// Run it as a Bootstrap Node
-	dhtClient := dht.NewDHT(ctx, h, ds.NewMapDatastore())
+	dhtClient := dht.NewDHTClient(ctx, h, ds.NewMapDatastore())
 	log.Infof("Bootstrapping %s\n", bootstrapPeers)
 
+	err := dhtClient.Bootstrap(ctx)
+	if err != nil {
+		return err
+	}
+
 	for _, addr := range bootstrapPeers {
+		log.Infof("Connecting to %s", addr)
 		iaddr, _ := ipfsaddr.ParseString(addr)
 		pinfo, _ := pstore.InfoFromP2pAddr(iaddr.Multiaddr())
+		h.Peerstore().AddAddrs(pinfo.ID, pinfo.Addrs, pstore.PermanentAddrTTL)
 		if err := h.Connect(ctx, *pinfo); err != nil {
 			log.Info("Bootstrapping to peer failed: ", err)
 		}
 	}
-
+	for _, idd := range h.Peerstore().Peers() {
+		log.Infof("Peer %s", idd.String())
+		log.Infof("Addr %v", h.Peerstore().Addrs(idd))
+	}
 	// Using the sha256 of our "topic" as our rendezvous value
-	cidPref, _ := cid.NewPrefixV1(cid.Raw, mh.SHA2_256).Sum([]byte("centrifuge-dht"))
-
-	// First, announce ourselves as participating in this topic
-	log.Info("Announcing ourselves...")
-	tctx, cancel := context.WithTimeout(ctx, time.Second*10)
-	if err := dhtClient.Provide(tctx, cidPref, true); err != nil {
-		// Important to keep this as Non-Fatal error, otherwise it will fail for a node that behaves as well as bootstrap one
-		log.Infof("Error: %s\n", err.Error())
-	}
-	cancel()
-
-	// Now, look for others who have announced
-	log.Info("Searching for other peers ...")
-	tctx, cancel = context.WithTimeout(ctx, time.Second*10)
-	peers, err := dhtClient.FindProviders(tctx, cidPref)
-	if err != nil {
-		log.Error(err)
-	}
-	cancel()
-	log.Infof("Found %d peers!\n", len(peers))
-
-	// Now connect to them, so they are added to the PeerStore
-	for _, pe := range peers {
-		log.Infof("Peer %s %s\n", pe.ID.Pretty(), pe.Addrs)
-
-		if pe.ID == h.ID() {
-			// No sense connecting to ourselves
-			continue
-		}
-
-		tctx, cancel := context.WithTimeout(ctx, time.Second*5)
-		if err := h.Connect(tctx, pe); err != nil {
-			log.Info("Failed to connect to peer: ", err)
-		}
-		cancel()
-	}
+	//cidRaw := "centrifuge-dht-"+h.ID().String()
+	//log.Infof("Startup CID Raw %s", cidRaw)
+	//cidPref, _ := cid.NewPrefixV1(cid.Raw, mh.SHA2_256).Sum([]byte(cidRaw))
+	//log.Infof("Startup CID: %s", cidPref.String())
+	//// First, announce ourselves as participating in this topic
+	//log.Info("Announcing ourselves...")
+	//tctx, cancel := context.WithTimeout(ctx, time.Second*10)
+	//if err := dhtClient.Provide(tctx, cidPref, true); err != nil {
+	//	// Important to keep this as Non-Fatal error, otherwise it will fail for a node that behaves as well as bootstrap one
+	//	log.Infof("Error: %s\n", err.Error())
+	//}
+	//cancel()
+	//
+	//// Now, look for others who have announced
+	//log.Info("Searching for other peers ...")
+	//tctx, cancel = context.WithTimeout(ctx, time.Second*10)
+	//peers, err := dhtClient.FindProviders(tctx, cidPref)
+	//if err != nil {
+	//	log.Error(err)
+	//}
+	//cancel()
+	//log.Infof("Found %d peers!\n", len(peers))
+	//
+	//// Now connect to them, so they are added to the PeerStore
+	//for _, pe := range peers {
+	//	log.Infof("Peer %s %s\n", pe.ID.Pretty(), pe.Addrs)
+	//
+	//	if pe.ID == h.ID() {
+	//		// No sense connecting to ourselves
+	//		continue
+	//	}
+	//
+	//	tctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	//	if err := h.Connect(tctx, pe); err != nil {
+	//		log.Info("Failed to connect to peer: ", err)
+	//	}
+	//	cancel()
+	//}
 
 	log.Info("Bootstrapping and discovery complete!")
 	return nil
