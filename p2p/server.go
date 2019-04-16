@@ -45,6 +45,7 @@ type peer struct {
 	config           config.Service
 	idService        identity.ServiceDID
 	host             host.Host
+	dhtClient        *dht.IpfsDHT
 	handlerCreator   func() *receiver.Handler
 	mes              messenger
 }
@@ -90,7 +91,8 @@ func (s *peer) Start(ctx context.Context, wg *sync.WaitGroup, startupErr chan<- 
 	}
 
 	// Start DHT and properly ignore errors :)
-	_ = runDHT(ctx, s.host, nc.GetBootstrapPeers())
+	dhtClient, _ := runDHT(ctx, s.host, nc.GetBootstrapPeers())
+	s.dhtClient = dhtClient
 	<-ctx.Done()
 
 }
@@ -192,14 +194,14 @@ func makeBasicHost(priv crypto.PrivKey, pub crypto.PubKey, externalIP string, li
 	return bhost, nil
 }
 
-func runDHT(ctx context.Context, h host.Host, bootstrapPeers []string) error {
+func runDHT(ctx context.Context, h host.Host, bootstrapPeers []string) (*dht.IpfsDHT, error) {
 	// Run it as a Bootstrap Node
 	dhtClient := dht.NewDHTClient(ctx, h, ds.NewMapDatastore())
 	log.Infof("Bootstrapping %s\n", bootstrapPeers)
 
 	err := dhtClient.Bootstrap(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, addr := range bootstrapPeers {
@@ -256,5 +258,5 @@ func runDHT(ctx context.Context, h host.Host, bootstrapPeers []string) error {
 	//}
 
 	log.Info("Bootstrapping and discovery complete!")
-	return nil
+	return dhtClient, nil
 }

@@ -233,6 +233,13 @@ func (s *peer) getSignatureForDocument(ctx context.Context, cd coredocumentpb.Co
 		if err != nil {
 			return nil, err
 		}
+		pinfo, err := s.dhtClient.FindPeer(ctx, receiverPeer)
+		if err != nil {
+			log.Errorf("Error FindPeer %v", pinfo)
+			return nil, err
+		}
+		log.Infof("Peer[%s] %v", pinfo.ID.String(), pinfo.Addrs)
+
 		log.Infof("Requesting signature from %s\n", receiverPeer)
 		recv, err := s.mes.SendMessage(ctx, receiverPeer, envelope, p2pcommon.ProtocolForDID(&id))
 		if err != nil {
