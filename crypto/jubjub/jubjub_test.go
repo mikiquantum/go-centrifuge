@@ -34,6 +34,7 @@ func TestVerify(t *testing.T) {
 	b32, err := utils.SliceToByte32(sk)
 	assert.NoError(t, err)
 	bbpk := babyjub.PrivateKey(b32)
+	fmt.Printf("yetPK: %s\n", bbpk.Scalar().BigInt().String())
 	msg := []byte("signIt")
 
 	sig, err := SignPython(bbpk[:], msg)
@@ -41,7 +42,6 @@ func TestVerify(t *testing.T) {
 	fmt.Println("SignPyCrypto", hexutil.Encode(sig))
 	sig, err = Sign(bbpk[:], msg)
 	assert.NoError(t, err)
-	fmt.Println("LenBabyJub", len(sig))
 	fmt.Println("SignBabyJub", hexutil.Encode(sig))
 	assert.True(t, Verify(pk, msg, sig))
 

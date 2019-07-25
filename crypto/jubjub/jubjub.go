@@ -125,6 +125,7 @@ func Sign(privateKey, message []byte) (signature []byte, err error) {
 	}
 	pk := babyjub.PrivateKey(b32)
 	mBI := &big.Int{}
+	fmt.Printf("Raw Message: %x\n", message)
 	mBI = mBI.SetBytes(message)
 	s := pk.SignMimc7(mBI)
 	fmt.Println("R8X_BabyJub", hexutil.Encode(s.R8.X.Bytes()))
